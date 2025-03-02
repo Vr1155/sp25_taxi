@@ -1,7 +1,6 @@
-confluent-kafka
+python-confluent-kafka
 folium
 geopandas
-hopsworks
 ipywidgets
 lightgbm
 matplotlib
