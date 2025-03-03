@@ -24,8 +24,8 @@ def plot_aggregated_time_series(
         plotly.graph_objects.Figure: A Plotly figure object showing the time series plot.
     """
     # Extract the specific location's features and target
-    location_features = features[features["pickup_location_id" == row_id]]
-    actual_target = targets[targets["pickup_location_id" == row_id]]
+    location_features = features.iloc[row_id]
+    actual_target = targets.iloc[row_id]
 
     # Identify time series columns (e.g., historical ride counts)
     time_series_columns = [
@@ -68,20 +68,30 @@ def plot_aggregated_time_series(
 
     # Optionally add the prediction as a red marker
     if predictions is not None:
+        predicted_value = predictions[row_id]
         fig.add_scatter(
             x=time_series_dates[-1:],  # Last timestamp
-            y=predictions[
-                predictions["pickup_location_id" == row_id]
-            ],  # Predicted value
+            y=[predicted_value],  # Predicted value
             line_color="red",
             mode="markers",
             marker_symbol="x",
             marker_size=15,
             name="Prediction",
         )
+    # if predictions is not None:
+    #     fig.add_scatter(
+    #         x=time_series_dates[-1:],  # Last timestamp
+    #         y=predictions[
+    #             predictions["pickup_location_id" == row_id]
+    #         ],  # Predicted value
+    #         line_color="red",
+    #         mode="markers",
+    #         marker_symbol="x",
+    #         marker_size=15,
+    #         name="Prediction",
+    #     )
 
     return fig
-
 
 def plot_prediction(features: pd.DataFrame, prediction: int):
     # Identify time series columns (e.g., historical ride counts)
