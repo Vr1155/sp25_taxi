@@ -1,5 +1,4 @@
 confluent-kafka
-python-confluent-kafka
 folium
 geopandas
 ipywidgets
