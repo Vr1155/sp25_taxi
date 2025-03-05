@@ -173,10 +173,6 @@ if "LocationID" in geo_df.columns and "zone" in geo_df.columns:
 
 shapefile_path = DATA_DIR / "taxi_zones" / "taxi_zones.shp"
 
-# Add Top 10 Locations table
-st.subheader("Top 10 Pickup Locations by Predicted Demand")
-top10_df = predictions.sort_values("predicted_demand", ascending=False).head(10)
-st.dataframe(top10_df[["pickup_location_id", "zone_display", "predicted_demand"]])
 
 # Build dropdown options with "Top 10 Locations" as the default.
 unique_zones = predictions[["pickup_location_id", "zone_display"]].drop_duplicates().sort_values("pickup_location_id")
@@ -202,6 +198,11 @@ else:
 st.subheader("NYC Taxi Zones Map")
 map_obj = create_taxi_map(shapefile_path, predictions, highlight_id=highlight_id)
 st_folium(map_obj, width=800, height=600, returned_objects=[])
+
+# Add Top 10 Locations table
+st.subheader("Top 10 Pickup Locations by Predicted Demand")
+top10_df = predictions.sort_values("predicted_demand", ascending=False).head(10)
+st.dataframe(top10_df[["pickup_location_id", "zone_display", "predicted_demand"]])
 
 # Display prediction graphs based on the dropdown selection.
 if selected_option == "Top 10 Locations":
