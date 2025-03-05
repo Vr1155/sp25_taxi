@@ -21,7 +21,20 @@ print(f"Transforming to ts_data ...")
 features, targets = transform_ts_data_info_features_and_target(
     ts_data, window_size=24 * 28, step_size=23
 )
-pipeline = get_pipeline()
+
+
+best_parameters = {"bagging_fraction": 0.7,
+    "bagging_freq": 1,
+    "colsample_bytree": 0.6,
+    "feature_fraction": 0.6,
+    "learning_rate": 0.05,
+    "max_depth": 30,
+    "n_estimators": 200,
+    "num_leaves": 256,
+    "reg_alpha": 1.0,
+    "reg_lambda": 0.1}
+
+pipeline = get_pipeline(**best_parameters)
 print(f"Training model ...")
 
 pipeline.fit(features, targets)
