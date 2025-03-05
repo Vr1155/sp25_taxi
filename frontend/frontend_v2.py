@@ -167,7 +167,7 @@ def load_shape_data_file(data_dir, url="https://d37ci6vzurychx.cloudfront.net/mi
 # 1. Adjust the time display to reflect New York/EST.
 current_date = pd.Timestamp.now(tz="America/New_York")  # Changed timezone from Etc/UTC to America/New_York
 st.title("New York Yellow Taxi Cab Demand Next Hour")
-st.header(current_date.strftime("%Y-%m-%d %H:%M:%S"))
+st.header(current_date.strftime("%Y-%m-%d %H:%M:%S EST"))
 
 progress_bar = st.sidebar.header("Working Progress")
 progress_bar = st.sidebar.progress(0)
