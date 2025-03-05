@@ -22,6 +22,8 @@ from src.plot_utils import plot_prediction
 
 # Add parent directory to Python path
 
+# Set the GDAL configuration to restore SHX files
+os.environ['SHAPE_RESTORE_SHX'] = 'YES'
 
 # Initialize session state for the map
 if "map_created" not in st.session_state:
