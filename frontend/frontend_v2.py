@@ -1,12 +1,6 @@
 import sys
 from pathlib import Path
-
-parent_dir = str(Path(__file__).parent.parent)
-sys.path.append(parent_dir)
-
-
 import zipfile
-
 import folium
 import geopandas as gpd
 import matplotlib.pyplot as plt
@@ -15,7 +9,6 @@ import requests
 import streamlit as st
 from branca.colormap import LinearColormap
 from streamlit_folium import st_folium
-
 import os
 
 from src.config import DATA_DIR
@@ -23,6 +16,8 @@ from src.inference import fetch_next_hour_predictions, load_batch_of_features_fr
 from src.plot_utils import plot_prediction
 
 # Add parent directory to Python path
+parent_dir = str(Path(__file__).parent.parent)
+sys.path.append(parent_dir)
 
 # Set the GDAL configuration to restore SHX files
 os.environ['SHAPE_RESTORE_SHX'] = 'YES'
@@ -30,7 +25,6 @@ os.environ['SHAPE_RESTORE_SHX'] = 'YES'
 # Initialize session state for the map
 if "map_created" not in st.session_state:
     st.session_state.map_created = False
-
 
 def visualize_predicted_demand(shapefile_path, predicted_demand):
     """
@@ -44,64 +38,41 @@ def visualize_predicted_demand(shapefile_path, predicted_demand):
     Returns:
         None
     """
-    # Load the shapefile
+    # Load and reproject the shapefile
     gdf = gpd.read_file(shapefile_path).to_crs("epsg:4326")
 
-    # Ensure the taxi zone IDs in the shapefile match the keys in predicted_demand
-    # Assuming the shapefile has a column 'zone_id' or 'LocationID' for taxi zones
     if "LocationID" not in gdf.columns:
-        raise ValueError(
-            "Shapefile must contain a 'LocationID' column to match taxi zones."
-        )
+        raise ValueError("Shapefile must contain a 'LocationID' column to match taxi zones.")
 
-    # Add a new column for predicted rides, defaulting to 0 if no prediction is available
     gdf["predicted_demand"] = gdf["LocationID"].map(predicted_demand).fillna(0)
-
-    # Plot the map
     fig, ax = plt.subplots(1, 1, figsize=(12, 8))
     gdf.plot(
-        column="predicted_demand",  # Column to color by
-        cmap="OrRd",  # Color map (e.g., 'OrRd' for orange-red gradient)
+        column="predicted_demand",
+        cmap="OrRd",
         linewidth=0.8,
         ax=ax,
         edgecolor="black",
         legend=True,
         legend_kwds={"label": "Predicted Rides", "orientation": "vertical"},
     )
-
-    # Add title and labels
     ax.set_title("Predicted NYC Taxi Rides by Zone", fontsize=16)
-    ax.set_axis_off()  # Turn off axis for a cleaner map
-
-    # Show the plot
+    ax.set_axis_off()
     st.pyplot(fig)
-
 
 def create_taxi_map(shapefile_path, prediction_data):
     """
-    Create an interactive choropleth map of NYC taxi zones with predicted rides
+    Create an interactive choropleth map of NYC taxi zones with predicted rides.
     """
-    # Load the NYC taxi zones shapefile
     nyc_zones = gpd.read_file(shapefile_path)
-
-    # Merge with cleaned column names
     nyc_zones = nyc_zones.merge(
         prediction_data[["pickup_location_id", "predicted_demand"]],
         left_on="LocationID",
         right_on="pickup_location_id",
         how="left",
     )
-
-    # Fill NaN values with 0 for predicted demand
     nyc_zones["predicted_demand"] = nyc_zones["predicted_demand"].fillna(0)
-
-    # Convert to GeoJSON for Folium
     nyc_zones = nyc_zones.to_crs(epsg=4326)
-
-    # Create map
     m = folium.Map(location=[40.7128, -74.0060], zoom_start=10, tiles="cartodbpositron")
-
-    # Create color map
     colormap = LinearColormap(
         colors=[
             "#FFEDA0",
@@ -115,10 +86,7 @@ def create_taxi_map(shapefile_path, prediction_data):
         vmin=nyc_zones["predicted_demand"].min(),
         vmax=nyc_zones["predicted_demand"].max(),
     )
-
     colormap.add_to(m)
-
-    # Define style function
     def style_function(feature):
         predicted_demand = feature["properties"].get("predicted_demand", 0)
         return {
@@ -127,59 +95,39 @@ def create_taxi_map(shapefile_path, prediction_data):
             "weight": 1,
             "fillOpacity": 0.7,
         }
-
-    # Convert GeoDataFrame to GeoJSON
     zones_json = nyc_zones.to_json()
-
-    # Add the choropleth layer
     folium.GeoJson(
         zones_json,
         style_function=style_function,
         tooltip=folium.GeoJsonTooltip(
             fields=["zone", "predicted_demand"],
             aliases=["Zone:", "Predicted Demand:"],
-            style=(
-                "background-color: white; color: #333333; font-family: arial; font-size: 12px; padding: 10px;"
-            ),
+            style=("background-color: white; color: #333333; "
+                   "font-family: arial; font-size: 12px; padding: 10px;"),
         ),
     ).add_to(m)
 
-    # Store the map in session state
     st.session_state.map_obj = m
     st.session_state.map_created = True
     return m
 
-
-def load_shape_data_file(
-    data_dir, url="https://d37ci6vzurychx.cloudfront.net/misc/taxi_zones.zip", log=True
-):
+def load_shape_data_file(data_dir, url="https://d37ci6vzurychx.cloudfront.net/misc/taxi_zones.zip", log=True):
     """
     Downloads, extracts, and loads a shapefile as a GeoDataFrame.
-
-    Parameters:
-        data_dir (str or Path): Directory where the data will be stored.
-        url (str): URL of the shapefile zip file.
-        log (bool): Whether to log progress messages.
-
-    Returns:
-        GeoDataFrame: The loaded shapefile as a GeoDataFrame.
     """
-    # Ensure data directory exists
     data_dir = Path(data_dir)
     data_dir.mkdir(parents=True, exist_ok=True)
 
-    # Define file paths
     zip_path = data_dir / "taxi_zones.zip"
     extract_path = data_dir / "taxi_zones"
     shapefile_path = extract_path / "taxi_zones.shp"
 
-    # Download the file if it doesn't already exist
     if not zip_path.exists():
         if log:
             print(f"Downloading file from {url}...")
         try:
             response = requests.get(url, timeout=10)
-            response.raise_for_status()  # Raise an HTTPError for bad responses
+            response.raise_for_status()
             with open(zip_path, "wb") as f:
                 f.write(response.content)
             if log:
@@ -190,7 +138,6 @@ def load_shape_data_file(
         if log:
             print(f"File already exists at {zip_path}, skipping download.")
 
-    # Extract the zip file if the shapefile doesn't already exist
     if not shapefile_path.exists():
         if log:
             print(f"Extracting files to {extract_path}...")
@@ -205,7 +152,6 @@ def load_shape_data_file(
         if log:
             print(f"Shapefile already exists at {shapefile_path}, skipping extraction.")
 
-    # Load and return the shapefile as a GeoDataFrame
     if log:
         print(f"Loading shapefile from {shapefile_path}...")
     try:
@@ -216,77 +162,80 @@ def load_shape_data_file(
     except Exception as e:
         raise Exception(f"Failed to load shapefile {shapefile_path}: {e}")
 
+# ----------------- MODIFICATIONS BEGIN HERE -----------------
 
-# st.set_page_config(layout="wide")
-
-current_date = pd.Timestamp.now(tz="Etc/UTC")
-st.title(f"New York Yellow Taxi Cab Demand Next Hour")
-st.header(f'{current_date.strftime("%Y-%m-%d %H:%M:%S")}')
+# 1. Adjust the time display to reflect New York/EST.
+current_date = pd.Timestamp.now(tz="America/New_York")  # Changed timezone from Etc/UTC to America/New_York
+st.title("New York Yellow Taxi Cab Demand Next Hour")
+st.header(current_date.strftime("%Y-%m-%d %H:%M:%S"))
 
 progress_bar = st.sidebar.header("Working Progress")
 progress_bar = st.sidebar.progress(0)
 N_STEPS = 4
-
 
 with st.spinner(text="Download shape file for taxi zones"):
     geo_df = load_shape_data_file(DATA_DIR)
     st.sidebar.write("Shape file was downloaded")
     progress_bar.progress(1 / N_STEPS)
 
-
 with st.spinner(text="Fetching batch of inference data"):
     features = load_batch_of_features_from_store(current_date)
     st.sidebar.write("Inference features fetched from the store")
     progress_bar.progress(2 / N_STEPS)
-
 
 with st.spinner(text="Fetching predictions"):
     predictions = fetch_next_hour_predictions()
     st.sidebar.write("Model was loaded from the registry")
     progress_bar.progress(3 / N_STEPS)
 
+# 2. Include taxi zone names.
+# Create a mapping from taxi zone ID to taxi zone name using the shapefile.
+if "LocationID" in geo_df.columns and "zone" in geo_df.columns:
+    zone_mapping = geo_df.set_index("LocationID")["zone"].to_dict()
+    predictions["zone_name"] = predictions["pickup_location_id"].map(zone_mapping)
+
 shapefile_path = DATA_DIR / "taxi_zones" / "taxi_zones.shp"
 
 with st.spinner(text="Plot predicted rides demand"):
-    # predictions_df = visualize_predicted_demand(
-    #     shapefile_path, predictions["predicted_demand"]
-    # )
     st.subheader("Taxi Ride Predictions Map")
     map_obj = create_taxi_map(shapefile_path, predictions)
-
-    # Display the map
     if st.session_state.map_created:
         st_folium(st.session_state.map_obj, width=800, height=600, returned_objects=[])
 
-    # Display data statistics
     st.subheader("Prediction Statistics")
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric(
-            "Average Rides",
-            f"{predictions['predicted_demand'].mean():.0f}",
-        )
+        st.metric("Average Rides", f"{predictions['predicted_demand'].mean():.0f}")
     with col2:
-        st.metric(
-            "Maximum Rides",
-            f"{predictions['predicted_demand'].max():.0f}",
-        )
+        st.metric("Maximum Rides", f"{predictions['predicted_demand'].max():.0f}")
     with col3:
-        st.metric(
-            "Minimum Rides",
-            f"{predictions['predicted_demand'].min():.0f}",
-        )
+        st.metric("Minimum Rides", f"{predictions['predicted_demand'].min():.0f}")
 
-    # Show sample of the data
     st.sidebar.write("Finished plotting taxi rides demand")
     progress_bar.progress(4 / N_STEPS)
 
-st.dataframe(predictions.sort_values("predicted_demand", ascending=False).head(10))
-top10 = (
-    predictions.sort_values("predicted_demand", ascending=False)
-    .head(10)["pickup_location_id"]
-    .to_list()
+# 3. Display top 10 predictions with the added taxi zone name column.
+top10_df = predictions.sort_values("predicted_demand", ascending=False).head(10)
+st.subheader("Top 10 Pickup Locations by Predicted Demand")
+st.dataframe(top10_df[["pickup_location_id", "zone_name", "predicted_demand"]])
+
+# 4. Add a dropdown menu to select a taxi zone by name and plot its prediction line graph.
+selected_zone = st.sidebar.selectbox(
+    "Select Taxi Zone for Detailed Prediction",
+    sorted(predictions["zone_name"].dropna().unique())
 )
+if selected_zone:
+    # Find the corresponding pickup location ID for the selected taxi zone.
+    selected_zone_id = predictions[predictions["zone_name"] == selected_zone]["pickup_location_id"].iloc[0]
+    filtered_features = features[features["pickup_location_id"] == selected_zone_id]
+    filtered_predictions = predictions[predictions["pickup_location_id"] == selected_zone_id]
+    if not filtered_features.empty and not filtered_predictions.empty:
+        st.subheader(f"Prediction Details for {selected_zone}")
+        line_fig = plot_prediction(features=filtered_features, prediction=filtered_predictions)
+        st.plotly_chart(line_fig, theme="streamlit", use_container_width=True)
+
+# Original code to plot predictions per top location (if needed)
+top10 = top10_df["pickup_location_id"].to_list()
 for location_id in top10:
     fig = plot_prediction(
         features=features[features["pickup_location_id"] == location_id],
