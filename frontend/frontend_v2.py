@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import sys
 from pathlib import Path
 import zipfile
@@ -141,7 +140,7 @@ def load_shape_data_file(data_dir, url="https://d37ci6vzurychx.cloudfront.net/mi
 # Set New York/EST time for current date and time.
 current_date = pd.Timestamp.now(tz="America/New_York")
 st.title("New York Yellow Taxi Cab Demand Next Hour")
-st.header(current_date.strftime("%Y-%m-%d %H:%M:%S"))
+st.header(current_date.strftime("%Y-%m-%d %H:%M:%S EST"))
 
 progress_bar = st.sidebar.header("Working Progress")
 progress_bar = st.sidebar.progress(0)
@@ -174,6 +173,11 @@ if "LocationID" in geo_df.columns and "zone" in geo_df.columns:
 
 shapefile_path = DATA_DIR / "taxi_zones" / "taxi_zones.shp"
 
+# Add Top 10 Locations table
+st.subheader("Top 10 Pickup Locations by Predicted Demand")
+top10_df = predictions.sort_values("predicted_demand", ascending=False).head(10)
+st.dataframe(top10_df[["pickup_location_id", "zone_display", "predicted_demand"]])
+
 # Build dropdown options with "Top 10 Locations" as the default.
 unique_zones = predictions[["pickup_location_id", "zone_display"]].drop_duplicates().sort_values("pickup_location_id")
 dropdown_options = ["Top 10 Locations"] + unique_zones["zone_display"].tolist()
@@ -202,7 +206,7 @@ st_folium(map_obj, width=800, height=600, returned_objects=[])
 # Display prediction graphs based on the dropdown selection.
 if selected_option == "Top 10 Locations":
     st.subheader("Prediction Details for Top 10 Locations")
-    top10_df = predictions.sort_values("predicted_demand", ascending=False).head(10)
+    # Use the same top10_df for graphs
     for idx, row in top10_df.iterrows():
         loc_id = row["pickup_location_id"]
         display_label = row["zone_display"]
