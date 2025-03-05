@@ -11,13 +11,15 @@ from branca.colormap import LinearColormap
 from streamlit_folium import st_folium
 import os
 
-from src.config import DATA_DIR
-from src.inference import fetch_next_hour_predictions, load_batch_of_features_from_store
-from src.plot_utils import plot_prediction
 
 # Add parent directory to the Python path
 parent_dir = str(Path(__file__).parent.parent)
 sys.path.append(parent_dir)
+
+
+from src.config import DATA_DIR
+from src.inference import fetch_next_hour_predictions, load_batch_of_features_from_store
+from src.plot_utils import plot_prediction
 
 # Set the GDAL configuration to restore SHX files
 os.environ['SHAPE_RESTORE_SHX'] = 'YES'
