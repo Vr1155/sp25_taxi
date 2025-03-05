@@ -166,6 +166,11 @@ def fetch_days_data(days):
 
     query = fg.select_all()
     # query = query.filter((fg.pickup_hour >= fetch_data_from))
-    df = query.read()
+    df = query.read(read_options={
+        "use_spark": False,
+        "arrow_flight_config": {
+            "timeout": 900000  # 15 minutes in milliseconds
+        }
+    })
     cond = (df["pickup_hour"] >= fetch_data_from) & (df["pickup_hour"] <= fetch_data_to)
     return df[cond]
