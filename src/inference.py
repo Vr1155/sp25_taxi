@@ -4,8 +4,6 @@ import hopsworks
 import numpy as np
 import pandas as pd
 from hsfs.feature_store import FeatureStore
-from hsfs.client.exceptions import FeatureStoreException
-
 
 import src.config as config
 from src.data_utils import transform_ts_data_info_features
@@ -24,17 +22,7 @@ def get_feature_store() -> FeatureStore:
 
 def get_model_predictions(model, features: pd.DataFrame) -> pd.DataFrame:
     # past_rides_columns = [c for c in features.columns if c.startswith('rides_')]
-    try:
-        predictions = model.predict(features, read_options={
-            "use_spark": False,
-            "arrow_flight_config": {
-                "timeout": 900000  # 15 minutes in milliseconds
-            }
-        })
-    except FeatureStoreException as e:
-        print(f"Error getting model predictions: {str(e)}")
-        # Handle the error appropriately, e.g., retry or use a fallback method
-
+    predictions = model.predict(features)
     results = pd.DataFrame()
     results["pickup_location_id"] = features["pickup_location_id"].values
     results["predicted_demand"] = predictions.round(0)
@@ -55,23 +43,10 @@ def load_batch_of_features_from_store(
         name=config.FEATURE_VIEW_NAME, version=config.FEATURE_VIEW_VERSION
     )
 
-    try:
-        ts_data = feature_view.get_batch_data(
-            start_time=(fetch_data_from - timedelta(days=1)),
-            end_time=(fetch_data_to + timedelta(days=1)),
-            read_options={
-                "use_spark": False,
-                "arrow_flight_config": {
-                    "timeout": 900000  # 15 minutes in milliseconds
-                }
-            }
-        )
-    except FeatureStoreException as e:
-        print(f"Error fetching batch data: {str(e)}")
-        # Handle the error appropriately, e.g., retry or use a fallback method
-
-
-
+    ts_data = feature_view.get_batch_data(
+        start_time=(fetch_data_from - timedelta(days=1)),
+        end_time=(fetch_data_to + timedelta(days=1)),
+    )
     ts_data = ts_data[ts_data.pickup_hour.between(fetch_data_from, fetch_data_to)]
 
     # Sort data by location and time
@@ -166,11 +141,6 @@ def fetch_days_data(days):
 
     query = fg.select_all()
     # query = query.filter((fg.pickup_hour >= fetch_data_from))
-    df = query.read(read_options={
-        "use_spark": False,
-        "arrow_flight_config": {
-            "timeout": 900000  # 15 minutes in milliseconds
-        }
-    })
+    df = query.read()
     cond = (df["pickup_hour"] >= fetch_data_from) & (df["pickup_hour"] <= fetch_data_to)
     return df[cond]
