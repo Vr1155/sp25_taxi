@@ -39,9 +39,14 @@ def load_batch_of_features_from_store(
     fetch_data_to = current_date - timedelta(hours=1)
     fetch_data_from = current_date - timedelta(days=29)
     print(f"Fetching data from {fetch_data_from} to {fetch_data_to}")
-    feature_view = feature_store.get_feature_view(
-        name=config.FEATURE_VIEW_NAME, version=config.FEATURE_VIEW_VERSION
-    )
+    try:
+        feature_view = feature_store.get_feature_view(
+            name=config.FEATURE_VIEW_NAME, version=config.FEATURE_VIEW_VERSION
+        )
+    except Exception as e:
+        print(f"❌ Failed to fetch feature view: {e}")
+        raise
+
 
     ts_data = feature_view.get_batch_data(
         start_time=(fetch_data_from - timedelta(days=1)),
