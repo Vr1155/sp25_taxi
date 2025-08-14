@@ -72,12 +72,13 @@ def load_model_from_registry(version=None):
     project = get_hopsworks_project()
     model_registry = project.get_model_registry()
 
-    models = model_registry.get_models(name=config.MODEL_NAME)
-    model = max(models, key=lambda model: model.version)
-    model_dir = model.download()
-    model = joblib.load(Path(model_dir) / "lgb_model.pkl")
+    if version:
+        model = model_registry.get_model(name=config.MODEL_NAME, version=version)
+    else:
+        models = model_registry.get_models(name=config.MODEL_NAME)
+        model = max(models, key=lambda model: model.version)
 
-    return model
+    return model.get_model()  # ✅ Avoid .download() in CI/C
 
 
 def load_metrics_from_registry(version=None):
